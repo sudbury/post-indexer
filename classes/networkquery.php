@@ -2786,8 +2786,13 @@ class Network_Query {
 			$this->posts[$i] = sanitize_post( $post, 'raw' );
 		}
 
-		if ( $q['cache_results'] )
-			update_post_caches($this->posts, $post_type, $q['update_post_term_cache'], $q['update_post_meta_cache']);
+		if ( $q['cache_results'] ) {
+			/* update_post_caches() is not multisite-aware, so only cache posts belonging to the current blog.  To cache all the posts, we would have to call switch_to_blog() to change to each post's blog before caching so the cache key prefix can be updated to reflect the current blog, which seems costly. */
+			$current_blog_id = get_current_blog_id();
+			/* $post->BLOG_ID is a string; get_current_blog_id() returns an integer. */
+			$current_blog_posts = array_values(array_filter($this->posts, function($post){return intval($post->BLOG_ID) === $current_blog_id;}));
+			update_post_caches($current_blog_posts, $post_type, $q['update_post_term_cache'], $q['update_post_meta_cache']);
+		}
 
 		if ( $this->post_count > 0 ) {
 			$this->post = $this->posts[0];
